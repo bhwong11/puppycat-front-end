@@ -8,6 +8,9 @@ function App() {
   const [daysOff,setdaysOff] = useState(0)
   const [cool,setCool] = useState(false)
   const [vacationEditArray,setVacationEditArray] = useState(null);
+  const [activitiesEditArray,setActivitiesEditArray] = useState(null);
+  let activitiesCount = 0
+  let nestedACount=[]
   useEffect(()=>{
   
   fetch('http://localhost:8000/vacationsList/')
@@ -22,6 +25,11 @@ function App() {
   fetch('http://localhost:8000/activitiesList/')
   .then(data=>data.json())
   .then(json=>{
+    setActivitiesEditArray(json.map(activity=>{
+      return{
+        ...activity
+      }
+    }))
     setActivities(json)
   })
 
@@ -65,14 +73,35 @@ function App() {
     })
   }
 
+  const updateActivities =(id,name,description,vacationId)=>{
+    fetch(`http://localhost:8000/activitiesUpdate/${id}`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        name, 
+        description,
+        vacation:vacationId})
+    }).then(response=>response.json())
+    .then(json=>{
+      const index = activities.findIndex(obj=>obj.id===json.id)
+      const activitiesCopy = [...activities]
+      activitiesCopy[index] = json
+      setActivities(activitiesCopy)
+    })
+  }
+
   return (
     <div className="App">
       Hello World
+      {activitiesCount=0}
+      {nestedACount=[]}
       {vacations?vacations.map((vacation,idx)=>(
         <div>
           <div>Place: {vacation.place}</div>
           <div>{vacation.days_off}</div>
-          {console.log(vacationEditArray)}
           <form onSubmit={(e)=>{
             e.preventDefault()
             updateVacation(vacationEditArray[idx].vacation_id,vacationEditArray[idx].place,vacationEditArray[idx].days_off,vacationEditArray[idx].cool)
@@ -90,15 +119,51 @@ function App() {
           cool: <input type="checkbox" checked={vacationEditArray[idx].cool} onChange={()=>{
             const vacationEditArrayCopy = [...vacationEditArray]
             vacationEditArrayCopy[idx].days_off = !vacationEditArrayCopy[idx].days_off
-            setVacationEditArray(vacationEditArrayCopy[idx])
+            setVacationEditArray(vacationEditArrayCopy)
             }}/>
             <button>update vacation</button>
           </form>
-          {activities?activities.filter(activity=>activity.vacation.vacation_id===vacation.vacation_id).map(activity=>{
+          {nestedACount.push([])}
+          {activities?activities.filter(activity=>activity.vacation.vacation_id===vacation.vacation_id).map((activity,actIdx)=>{
+            nestedACount[idx].push(activitiesCount)
+            activitiesCount++
             return(
               <div>
                 <div>{activity.name}</div>
                 <div>{activity.description}</div>
+                <div>{activity.vacation.place}</div>
+                <div>activities count{activitiesCount}</div>
+                <form onSubmit={(e)=>{
+                  e.preventDefault()
+                  updateActivities(activitiesEditArray[nestedACount[idx][actIdx]].id,activitiesEditArray[nestedACount[idx][actIdx]].name,activitiesEditArray[nestedACount[idx][actIdx]].description,activitiesEditArray[nestedACount[idx][actIdx]].vacation.vacation_id)
+                }}>
+                  name: <input value={activitiesEditArray[nestedACount[idx][actIdx]].name} onChange={(e)=>{
+                    const activitiesEditArrayCopy = [...activitiesEditArray]
+                    console.log('acrray1',activitiesEditArray[nestedACount[idx][actIdx]].name)
+                    activitiesEditArrayCopy[nestedACount[idx][actIdx]].name = e.target.value
+                    console.log('acrray',activitiesEditArrayCopy[nestedACount[idx][actIdx]].name)
+                    console.log(activitiesEditArray[nestedACount[idx][actIdx]].name)
+                    setActivitiesEditArray(activitiesEditArrayCopy)
+                    }}/>
+                  description: <input value={activitiesEditArray[nestedACount[idx][actIdx]].description} onChange={(e)=>{
+                    const activitiesEditArrayCopy = [...activitiesEditArray]
+                    activitiesEditArrayCopy[nestedACount[idx][actIdx]].days_off = e.target.value
+                    setActivitiesEditArray(activitiesEditArrayCopy)
+                    }}/>
+                  vacation id:
+                  <select value={activitiesEditArray[nestedACount[idx][actIdx]].vacation.vacation_id} onChange={(e)=>{
+                    const activitiesEditArrayCopy = [...activitiesEditArray]
+                    activitiesEditArrayCopy[nestedACount[idx][actIdx]].vacation.vacation_id = e.target.value
+                    setActivitiesEditArray(activitiesEditArrayCopy)
+                    }}>   
+                          {vacations.map(v=>{
+                            return <option value={v.vacation_id}>
+                              {v.place}
+                            </option>
+                          })}         
+                  </select>
+                  <button>update activity</button>
+                </form>
               </div>
             )
           }):<>loading activities...</>}
